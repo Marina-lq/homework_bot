@@ -19,18 +19,19 @@ ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
 
-HOMEWORK_STATUSES = {
+HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    filename='program.log',
-    filemode='w',
-    format='%(asctime)s - %(levelname)s - %(message)s - %(name)s'
-)
+if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='program.log',
+        filemode='w',
+        format='%(asctime)s - %(levelname)s - %(message)s - %(name)s'
+    )
 logger = logging.getLogger(__name__)
 logger.addHandler(
     logging.StreamHandler()
@@ -74,8 +75,9 @@ def get_api_answer(current_timestamp):
 def check_response(response):
     """Проверяем запрос."""
     homeworks = response['homeworks']
-    if isinstance(homeworks, list):
-        print(homeworks)
+    if type(response) is not dict:
+        raise TypeError('Not dict')
+    elif isinstance(homeworks, list):
         return(homeworks)
     raise Exception('Not list')
 
@@ -84,31 +86,15 @@ def parse_status(homework):
     """Анализируем статус если изменился."""
     homework_name = homework['homework_name']
     homework_status = homework['status']
-    if homework_status in HOMEWORK_STATUSES:
-        verdict = HOMEWORK_STATUSES.get(homework_status)
+    if homework_status in HOMEWORK_VERDICTS:
+        verdict = HOMEWORK_VERDICTS.get(homework_status)
         return f'Изменился статус проверки работы "{homework_name}". {verdict}'
     raise Exception('wrong status')
 
 
 def check_tokens():
     """Проверка наличия токенов."""
-    no_tokens_msg = (
-        'Программа принудительно остановлена. '
-        'Отсутствует обязательная переменная окружения:')
-    tokens_bool = True
-    if PRACTICUM_TOKEN is None:
-        tokens_bool = False
-        logger.critical(
-            f'{no_tokens_msg} PRACTICUM_TOKEN')
-    if TELEGRAM_TOKEN is None:
-        tokens_bool = False
-        logger.critical(
-            f'{no_tokens_msg} TELEGRAM_TOKEN')
-    if TELEGRAM_CHAT_ID is None:
-        tokens_bool = False
-        logger.critical(
-            f'{no_tokens_msg} CHAT_ID')
-    return tokens_bool
+    return all([TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, PRACTICUM_TOKEN])
 
 
 def main():
