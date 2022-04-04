@@ -25,13 +25,6 @@ HOMEWORK_VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
-if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.DEBUG,
-        filename='program.log',
-        filemode='w',
-        format='%(asctime)s - %(levelname)s - %(message)s - %(name)s'
-    )
 logger = logging.getLogger(__name__)
 logger.addHandler(
     logging.StreamHandler()
@@ -75,7 +68,7 @@ def get_api_answer(current_timestamp):
 def check_response(response):
     """Проверяем запрос."""
     homeworks = response['homeworks']
-    if type(response) is not dict:
+    if not isinstance(response, dict):
         raise TypeError('Not dict')
     elif isinstance(homeworks, list):
         return(homeworks)
@@ -107,7 +100,7 @@ def main():
     errors = True
     while True:
         try:
-            response = get_api_answer(ENDPOINT, current_timestamp)
+            response = get_api_answer(current_timestamp)
             homework = check_response(response)
             if homework and tmp_status != homework['status']:
                 message = parse_status(homework)
@@ -126,4 +119,10 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.DEBUG,
+        filename='program.log',
+        filemode='w',
+        format='%(asctime)s - %(levelname)s - %(message)s - %(name)s'
+    )
     main()
