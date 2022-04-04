@@ -4,7 +4,7 @@ import os
 import requests
 from http import HTTPStatus
 import telegram
-
+import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +18,7 @@ RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-
+PRACTICUM_BIRTHDAY = int(datetime.datetime(2019, 2, 12, 9, 0).timestamp())
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
@@ -92,29 +92,40 @@ def check_tokens():
 
 def main():
     """Основная логика работы бота."""
-    if not check_tokens():
-        exit()
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = int(time.time())
-    tmp_status = 'reviewing'
-    errors = True
+    homework_status = 'Unknown'
+    last_error = None
+    if check_tokens() is False:
+        return
+    try:
+        bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    except telegram.error.TelegramError as error:
+        logger.critical(f'Произошла ошибка при создании бота: {error} '
+                        'программа остановлена')
+        return
     while True:
         try:
-            response = get_api_answer(current_timestamp)
-            homework = check_response(response)
-            if homework and tmp_status != homework['status']:
-                message = parse_status(homework)
-                send_message(bot, message)
-                tmp_status = homework['status']
-            logger.info(
-                'Изменений нет, ждем 10 минут и проверяем API')
-            time.sleep(RETRY_TIME)
+            response = get_api_answer(PRACTICUM_BIRTHDAY)
+            homeworks = check_response(response)
+            if homeworks:
+                last_homework = homeworks[0]
+                status = parse_status(last_homework)
+                if homework_status != status:
+                    homework_status = status
+                    send_message(bot, status)
+                else:
+                    logger.info('Статус проверки задания'
+                                ' не обновился')
+            else:
+                raise Exception('С указанного момента времени'
+                                ' не было сданных домашних заданий')
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            if errors:
-                errors = False
+            if error != last_error:
+                message = f'Сбой в работе программы: {error}'
+                logger.error(message)
                 send_message(bot, message)
-            logger.critical(message)
+                last_error = error
+            time.sleep(RETRY_TIME)
+        else:
             time.sleep(RETRY_TIME)
 
 
